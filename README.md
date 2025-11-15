@@ -1,0 +1,2 @@
+# NeuroVision
+⭐ NeuroVision — AI Health Companion  A multimodal AI system that combines emotion recognition, medical image analysis, and clinical report summarization into one powerful health-analysis dashboard.  NeuroVision integrates Computer Vision, Affective Computing, and Natural Language Processing (NLP) to provide real-time insights into a user's emotional and physical well-being. Built entirely in Python using Streamlit, DeepFace, OpenCV, and Transformer-based models, the system runs fully offline, ensuring data privacy and security.
