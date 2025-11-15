@@ -112,8 +112,7 @@ if run:
     cap.release(); cv2.destroyAllWindows()
 
 # =========================================================
-# =========================================================
-# 💬 AI HEALTH CHATBOT (Context-Aware Question Answering)
+# 💬 AI HEALTH CHATBOT
 # =========================================================
 with tab_chat:
     st.subheader("💬 AI Health Chat Assistant")
@@ -130,13 +129,19 @@ with tab_chat:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Build knowledge base context from session
+    # Build context (robust check to avoid locals()/indentation issues)
     context_parts = []
-    if "result" in locals(): context_parts.append(result)
-    if "short_summary" in locals(): context_parts.append(short_summary)
+    for name in ("result", "short_summary"):
+        val = globals().get(name, None)
+        if val is None:
+            val = locals().get(name, None)
+        if val is not None:
+            context_parts.append(val)
+
     if len(st.session_state.log) > 0:
         last_em = st.session_state.log[-1]["emotion"]
         context_parts.append(f"Detected emotion: {last_em}")
+
     context = " ".join(context_parts) or "General patient health and wellbeing context."
 
     if st.button("Ask AI"):
@@ -146,7 +151,6 @@ with tab_chat:
             with st.spinner("Analyzing..."):
                 from transformers import pipeline
                 try:
-                    # Use a proper QA model instead of text-generator
                     qa = pipeline("question-answering", model="deepset/roberta-base-squad2")
                     answer = qa(question=user_query, context=context)["answer"]
                     if not answer:
@@ -168,7 +172,7 @@ with tab_chat:
             )
 
 # =========================================================
-# 🩻 X-RAY ANALYZER + SMART MEDICAL SUMMARY
+# 🩻 X-RAY ANALYZER
 # =========================================================
 with tab_scan:
     st.subheader("🩻 Smart X-Ray / MRI / CT Analyzer + Medical Report Summary")
@@ -225,7 +229,7 @@ with tab_scan:
         except Exception as e:
             st.error(f"⚠️ Model load error: {e}")
 
-    # --- MEDICAL REPORT QUICK SUMMARY (Stable Hybrid) ---
+    # --- MEDICAL REPORT SUMMARY ---
     st.markdown("---")
     st.subheader("📄 Quick Medical Report Summary")
 
