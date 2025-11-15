@@ -1,5 +1,5 @@
 <div align="center">
-<img src=ChatGPT Image Nov 16, 2025, 02_29_55 AM (2).png>
+<img src=banner.png>
 <h2>NeuroVision — AI Health Companion</h2>
 <p>Multimodal AI for Emotion Analysis • Medical Imaging • Clinical Summaries</p>
 <!-- Badges -->
