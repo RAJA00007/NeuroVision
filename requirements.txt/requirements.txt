@@ -1,0 +1,13 @@
+streamlit
+opencv-python-headless
+numpy
+pandas
+fpdf
+torch
+transformers
+pillow
+plotly
+deepface
+pytesseract
+PyMuPDF
+pyttsx3
