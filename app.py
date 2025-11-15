@@ -3,19 +3,22 @@
 # Emotion + AI Health Chat + Smart X-Ray + Report Summarizer + PDF Generator
 # =========================================================
 
-import os, time, threading, cv2, json, wave
-import numpy as np, pandas as pd, streamlit as st
-from datetime import datetime
-from statistics import mode
-from fpdf import FPDF
+# ---- SAFE IMPORTS (IMPORTANT FOR STREAMLIT CLOUD) ----
+import os, time, threading, json, wave
 
-
-# --- Safe CV2 import for Streamlit Cloud ---
+# Safe cv2 import
 try:
     import cv2
 except Exception:
     cv2 = None
-    
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+from statistics import mode
+from fpdf import FPDF
+
 # ---------- SAFE FOLDERS ----------
 for path in ["data", "data/session_logs", "reports"]:
     os.makedirs(path, exist_ok=True)
@@ -38,85 +41,140 @@ div.stButton>button,.stDownloadButton button{
 st.title("🧠 NeuroVision — AI Clinical Health Companion")
 
 # ---------- STATE ----------
-if "log" not in st.session_state: st.session_state.log=[]
-if "sid" not in st.session_state: st.session_state.sid=f"session_{datetime.now():%Y%m%d_%H%M%S}"
+if "log" not in st.session_state:
+    st.session_state.log = []
+
+if "sid" not in st.session_state:
+    st.session_state.sid = f"session_{datetime.now():%Y%m%d_%H%M%S}"
 
 # ---------- SIDEBAR ----------
 st.sidebar.header("Controls")
-patient = st.sidebar.text_input("Patient Name","")
-smooth = st.sidebar.slider("Smoothing (frames)",3,10,5)
-talk_conf = st.sidebar.slider("Confidence Threshold",0.5,0.9,0.6,0.01)
-run = st.sidebar.toggle("▶️ Run Live Session",False)
+patient = st.sidebar.text_input("Patient Name", "")
+smooth = st.sidebar.slider("Smoothing (frames)", 3, 10, 5)
+talk_conf = st.sidebar.slider("Confidence Threshold", 0.5, 0.9, 0.6, 0.01)
+run = st.sidebar.toggle("▶️ Run Live Session", False)
 
 # ---------- CHATBOT ----------
-def get_chat(msg:str)->str:
-    rules={
-        "happy":"Patient appears positive and stable.",
-        "sad":"Signs of sadness detected — mild mood disturbance likely.",
-        "fear":"Anxiety cues observed. Suggest relaxation and breathing exercises.",
-        "angry":"Stress and irritation levels high. Recommend calm breathing.",
-        "neutral":"Emotional state appears balanced and stable.",
-        "surprise":"Alert state detected, no major stress response.",
-        "disgust":"Negative emotional cues — may need stress intervention."
+def get_chat(msg: str) -> str:
+    rules = {
+        "happy": "Patient appears positive and stable.",
+        "sad": "Signs of sadness detected — mild mood disturbance likely.",
+        "fear": "Anxiety cues observed. Suggest relaxation and breathing exercises.",
+        "angry": "Stress and irritation levels high. Recommend calm breathing.",
+        "neutral": "Emotional state appears balanced and stable.",
+        "surprise": "Alert state detected, no major stress response.",
+        "disgust": "Negative emotional cues — may need stress intervention."
     }
-    for k,v in rules.items():
-        if k in msg.lower(): return v
+    for k, v in rules.items():
+        if k in msg.lower():
+            return v
     return "Stable emotional state detected."
 
 def speak_async(txt):
     def _run():
         try:
             import pyttsx3
-            e=pyttsx3.init(); e.setProperty('rate',165)
-            e.say(txt); e.runAndWait(); e.stop()
-        except: pass
-    threading.Thread(target=_run,daemon=True).start()
+            e = pyttsx3.init()
+            e.setProperty('rate', 165)
+            e.say(txt)
+            e.runAndWait()
+            e.stop()
+        except:
+            pass
+    threading.Thread(target=_run, daemon=True).start()
 
 # ---------- TABS ----------
-tab_main,tab_chat,tab_scan,tab_pdf = st.tabs(["🧭 Emotion","💬 AI Health Chat","🩻 X-Ray & Report Summary","📋 Clinical Report"])
+tab_main, tab_chat, tab_scan, tab_pdf = st.tabs([
+    "🧭 Emotion",
+    "💬 AI Health Chat",
+    "🩻 X-Ray & Report Summary",
+    "📋 Clinical Report"
+])
 
 # =========================================================
 # 🧭 EMOTION MONITOR
 # =========================================================
 if run:
-    with st.spinner("Loading DeepFace model …"):
-        from deepface import DeepFace; import plotly.graph_objects as go
-    cap=cv2.VideoCapture(0)
-    if not cap.isOpened(): st.error("Camera not accessible."); st.stop()
-    st.success("Camera started.")
-    frame_ph,bar_ph=tab_main.empty(),tab_main.empty()
-    last=None; stable=0
-    while True:
-        ok,frame=cap.read()
-        if not ok: break
-        rgb=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-        try:
-            res=DeepFace.analyze(rgb,actions=['emotion'],enforce_detection=False)[0]
-            emo=res['dominant_emotion'].capitalize()
-            conf=res['emotion'][res['dominant_emotion']]/100
-        except Exception: emo,conf="Neutral",0.5; res={'emotion':{'neutral':100}}
-        st.session_state.log.append({"time":datetime.now().strftime("%H:%M:%S"),"emotion":emo,"conf":conf})
-        if len(st.session_state.log)>400: st.session_state.log.pop(0)
-        hist=[e['emotion'] for e in st.session_state.log[-smooth:]]
-        try: smoothed=mode(hist)
-        except: smoothed=emo
-        cv2.putText(frame,f"{smoothed} ({conf:.2f})",(10,30),
-                    cv2.FONT_HERSHEY_SIMPLEX,1,(80,220,120),2)
-        frame_ph.image(rgb)
-        emotions=res['emotion']
-        fig=go.Figure([go.Bar(x=list(emotions.keys()),y=list(emotions.values()))])
-        fig.update_yaxes(range=[0,100])
-        bar_ph.plotly_chart(fig,use_container_width=True,key=f"emotion_chart_{time.time()}")
-        if smoothed==last: stable+=1
-        else: last,stable=smoothed,1
-        if stable>=3 and conf>=talk_conf:
-            reply=get_chat(smoothed)
-            speak_async(reply)
-            tab_main.info(f"🩺 AI Report: {reply}")
-            stable=0
-        time.sleep(.25)
-        if not run: break
-    cap.release(); cv2.destroyAllWindows()
+
+    if cv2 is None:
+        tab_main.error("❌ Camera is not supported on Streamlit Cloud.")
+    else:
+        with st.spinner("Loading DeepFace model …"):
+            from deepface import DeepFace
+            import plotly.graph_objects as go
+
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            st.error("Camera not accessible.")
+            st.stop()
+
+        st.success("Camera started.")
+        frame_ph, bar_ph = tab_main.empty(), tab_main.empty()
+        last = None
+        stable = 0
+
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            try:
+                res = DeepFace.analyze(rgb, actions=['emotion'], enforce_detection=False)[0]
+                emo = res['dominant_emotion'].capitalize()
+                conf = res['emotion'][res['dominant_emotion']] / 100
+            except Exception:
+                emo, conf = "Neutral", 0.5
+                res = {'emotion': {'neutral': 100}}
+
+            st.session_state.log.append({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "emotion": emo,
+                "conf": conf
+            })
+
+            if len(st.session_state.log) > 400:
+                st.session_state.log.pop(0)
+
+            hist = [e['emotion'] for e in st.session_state.log[-smooth:]]
+
+            try:
+                smoothed = mode(hist)
+            except:
+                smoothed = emo
+
+            cv2.putText(frame, f"{smoothed} ({conf:.2f})",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                        (80, 220, 120), 2)
+
+            frame_ph.image(rgb)
+
+            # BAR CHART
+            emotions = res['emotion']
+            fig = go.Figure([go.Bar(x=list(emotions.keys()), y=list(emotions.values()))])
+            fig.update_yaxes(range=[0, 100])
+            bar_ph.plotly_chart(fig, use_container_width=True, key=f"emotion_chart_{time.time()}")
+
+            # Auto Report Speech
+            if smoothed == last:
+                stable += 1
+            else:
+                last, stable = smoothed, 1
+
+            if stable >= 3 and conf >= talk_conf:
+                reply = get_chat(smoothed)
+                speak_async(reply)
+                tab_main.info(f"🩺 AI Report: {reply}")
+                stable = 0
+
+            time.sleep(.25)
+
+            if not run:
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
 
 # =========================================================
 # 💬 AI HEALTH CHATBOT
@@ -133,23 +191,23 @@ with tab_chat:
     """)
 
     user_query = st.text_area("🩺 Ask a question:", placeholder="Type your medical or emotional question...")
+
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Build context (robust check to avoid locals()/indentation issues)
+    # Build context safely
     context_parts = []
+
     for name in ("result", "short_summary"):
-        val = globals().get(name, None)
-        if val is None:
-            val = locals().get(name, None)
-        if val is not None:
+        val = globals().get(name) or locals().get(name)
+        if val:
             context_parts.append(val)
 
     if len(st.session_state.log) > 0:
         last_em = st.session_state.log[-1]["emotion"]
         context_parts.append(f"Detected emotion: {last_em}")
 
-    context = " ".join(context_parts) or "General patient health and wellbeing context."
+    context = " ".join(context_parts) or "General patient health context."
 
     if st.button("Ask AI"):
         if not user_query.strip():
@@ -161,7 +219,7 @@ with tab_chat:
                     qa = pipeline("question-answering", model="deepset/roberta-base-squad2")
                     answer = qa(question=user_query, context=context)["answer"]
                     if not answer:
-                        answer = "I'm not sure, please provide more medical context or upload a report."
+                        answer = "I need more context or a report."
                 except Exception as e:
                     answer = f"⚠️ Model error: {e}"
 
@@ -170,163 +228,154 @@ with tab_chat:
 
     if st.session_state.chat_history:
         st.markdown("### 💭 Conversation History")
-        for role, msg in st.session_state.chat_history[-8:]:
+        for role, msg in st.session_state.chat_history[-12:]:
             color = "#1e293b" if role == "🤖 AI" else "transparent"
             st.markdown(
                 f"<div style='background:{color};padding:8px;border-radius:8px;margin-bottom:5px;'>"
-                f"**{role}:** {msg}</div>",
-                unsafe_allow_html=True
+                f"**{role}:** {msg}</div>", unsafe_allow_html=True
             )
 
 # =========================================================
-# 🩻 X-RAY ANALYZER
+# 🩻 X-RAY / REPORT ANALYZER
 # =========================================================
 with tab_scan:
-    st.subheader("🩻 Smart X-Ray / MRI / CT Analyzer + Medical Report Summary")
+    st.subheader("🩻 Smart X-Ray / MRI / CT Analyzer + Report Summary")
 
-    from transformers import AutoImageProcessor, AutoModelForImageClassification, pipeline
+    from transformers import AutoImageProcessor, AutoModelForImageClassification
     import torch
     from PIL import Image
 
     def detect_body_part(img):
-        w,h=img.size; r=h/w
-        if r>1.3: return "chest"
-        elif r<0.8: return "bone"
-        else: return "brain"
+        w, h = img.size
+        r = h / w
+        if r > 1.3:
+            return "chest"
+        elif r < 0.8:
+            return "bone"
+        return "brain"
 
     def get_model_id(part):
-        mapping={
-            "chest":"prithivMLmods/chest-disease-classification",
-            "bone":"Heem2/bone-fracture-detection-using-xray",
-            "brain":"Heem2/brain-tumor-classification"
-        }
-        return mapping.get(part,"prithivMLmods/chest-disease-classification")
+        return {
+            "chest": "prithivMLmods/chest-disease-classification",
+            "bone": "Heem2/bone-fracture-detection-using-xray",
+            "brain": "Heem2/brain-tumor-classification"
+        }.get(part)
 
-    img_up=st.file_uploader("📸 Upload any X-ray / CT / MRI",type=["jpg","jpeg","png"])
+    img_up = st.file_uploader("📸 Upload any medical scan", type=["jpg", "jpeg", "png"])
+
     if img_up:
-        img=Image.open(img_up).convert("RGB")
-        st.image(img,width=350)
-        part=detect_body_part(img)
-        MODEL_ID=get_model_id(part)
-        st.info(f"🧠 Detected scan type → **{part.upper()}** | Model: `{MODEL_ID}`")
+        img = Image.open(img_up).convert("RGB")
+        st.image(img, width=350)
+        part = detect_body_part(img)
+        MODEL_ID = get_model_id(part)
+        st.info(f"Detected scan type → **{part.upper()}**")
 
         try:
-            with st.spinner("Running AI analysis..."):
-                proc=AutoImageProcessor.from_pretrained(MODEL_ID)
-                model=AutoModelForImageClassification.from_pretrained(MODEL_ID)
-                inputs=proc(img,return_tensors="pt")
+            with st.spinner("Running diagnostics..."):
+                proc = AutoImageProcessor.from_pretrained(MODEL_ID)
+                model = AutoModelForImageClassification.from_pretrained(MODEL_ID)
+                inputs = proc(img, return_tensors="pt")
                 with torch.no_grad():
-                    logits=model(**inputs).logits
-                    probs=logits.softmax(1).cpu().numpy()[0]
-                    label=model.config.id2label[int(probs.argmax())]
-                    conf=float(probs.max())
-            st.success(f"✅ Prediction: **{label}** ({conf:.1%})")
+                    logits = model(**inputs).logits
+                    probs = logits.softmax(1).cpu().numpy()[0]
+                    label = model.config.id2label[int(probs.argmax())]
+                    conf = float(probs.max())
 
-            st.markdown("### 🩺 AI Clinical Summary:")
-            if "fracture" in label.lower():
-                st.info("🦴 Possible bone fracture detected. Orthopedic follow-up advised.")
-            elif "pneumonia" in label.lower():
-                st.info("🫁 Signs of pneumonia detected. Physician consultation recommended.")
-            elif "tumor" in label.lower():
-                st.info("🧠 Tumor pattern detected. Neuroimaging confirmation suggested.")
-            elif "normal" in label.lower():
-                st.info("✅ Normal findings. No visible abnormalities.")
-            else:
-                st.info("⚕️ Inconclusive — Further tests suggested.")
+            st.success(f"Prediction: **{label}** ({conf:.1%})")
+
         except Exception as e:
-            st.error(f"⚠️ Model load error: {e}")
+            st.error(f"Model load error: {e}")
 
-    # --- MEDICAL REPORT SUMMARY ---
+    # REPORT SUMMARY
     st.markdown("---")
     st.subheader("📄 Quick Medical Report Summary")
 
-    report_file = st.file_uploader("📤 Upload Doctor’s Report (PDF / Image)", type=["pdf", "jpg", "jpeg", "png"])
+    report_file = st.file_uploader("📤 Upload Doctor’s Report (PDF / Image)",
+                                   type=["pdf", "jpg", "jpeg", "png"])
+
     if report_file:
-        text_data=""
-        if report_file.name.lower().endswith(".pdf"):
+        text_data = ""
+
+        if report_file.name.endswith(".pdf"):
             import fitz
-            with fitz.open(stream=report_file.read(), filetype="pdf") as pdf_doc:
-                for page in pdf_doc:
-                    text_data += page.get_text("text")
+            doc = fitz.open(stream=report_file.read(), filetype="pdf")
+            for p in doc:
+                text_data += p.get_text("text")
         else:
             import pytesseract
             img = Image.open(report_file)
             text_data = pytesseract.image_to_string(img)
 
         text_data = " ".join(text_data.split())
-        if len(text_data) > 3200:
-            text_data = text_data[:3200] + "..."
+
+        if len(text_data) > 3000:
+            text_data = text_data[:3000] + "..."
 
         if text_data.strip():
-            st.success("✅ Report text extracted successfully!")
-            with st.expander("🧾 View Extracted Report Text"):
-                st.text_area("Extracted Text", text_data, height=250)
+            st.success("Report text extracted!")
+
+            with st.expander("Extracted Text"):
+                st.text_area("Report Text", text_data, height=250)
 
             try:
                 from transformers import pipeline
-                st.info("🧠 Generating summary... please wait ~10 seconds")
-                summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-                result = summarizer(text_data, max_length=80, min_length=25, do_sample=False)[0]["summary_text"]
-                st.subheader("🩺 Key Medical Summary:")
+                summarizer = pipeline("summarization",
+                                      model="facebook/bart-large-cnn")
+                result = summarizer(text_data, max_length=80,
+                                    min_length=25, do_sample=False)[0]["summary_text"]
                 st.success(result)
-            except Exception:
-                try:
-                    summarizer = pipeline("summarization", model="t5-small")
-                    result = summarizer(text_data, max_length=80, min_length=25, do_sample=False)[0]["summary_text"]
-                    st.subheader("🩺 Key Medical Summary:")
-                    st.success(result)
-                except Exception:
-                    st.warning("⚠️ Model could not summarize. Extracting key points instead...")
-                    key_lines = [ln for ln in text_data.split(".") if any(k in ln.lower() for k in ["impression","diagnosis","finding","result","conclusion"])]
-                    if not key_lines:
-                        key_lines = text_data.split(".")[:3]
-                    short_summary = "\n".join(f"• {ln.strip()}" for ln in key_lines)
-                    st.subheader("🩺 Key Medical Points:")
-                    st.info(short_summary)
-        else:
-            st.warning("⚠️ No readable text detected.")
+
+            except:
+                lines = text_data.split(".")[:3]
+                short_summary = "\n".join(f"• {ln.strip()}" for ln in lines)
+                st.info(short_summary)
 
 # =========================================================
 # 📋 CLINICAL REPORT GENERATION
 # =========================================================
 with tab_pdf:
     st.subheader("📋 Generate Clinical Emotion Report")
+
     if st.button("Generate PDF Report"):
-        df=pd.DataFrame(st.session_state.log)
+        df = pd.DataFrame(st.session_state.log)
+
         if df.empty:
-            st.warning("⚠️ Please run an emotion session first.")
+            st.warning("Run an emotion session first.")
             st.stop()
 
-        dom=mode(df["emotion"])
-        avg=df["conf"].mean()
-        stress=(1-avg)*100
-        relax=avg*100
-        well=(avg*0.6+0.5*0.4)*100
-        dur=len(df)*0.25/60
+        dom = mode(df["emotion"])
+        avg = df["conf"].mean()
+        stress = (1 - avg) * 100
+        relax = avg * 100
+        well = (avg * 0.6 + 0.5 * 0.4) * 100
+        dur = len(df) * 0.25 / 60
 
-        report=f"""
+        report = f"""
 Patient: {patient or 'N/A'}
-Session Duration: {dur:.1f} min
+Session Duration: {dur:.1f} mins
 Dominant Emotion: {dom}
 Confidence: {avg:.2f}
 Stress Index: {stress:.1f}%
 Relax Score: {relax:.1f}%
-Overall Wellbeing: {well:.1f}%
+Wellbeing Score: {well:.1f}%
 
 Observation:
 {get_chat(dom)}
 
-Disclaimer: This AI-generated report is for wellbeing analysis only.
+Disclaimer: This AI report is NOT a medical diagnosis.
 """
 
-        pdf_path=f"reports/Report_{st.session_state.sid}.pdf"
-        pdf=FPDF()
+        pdf_path = f"reports/Report_{st.session_state.sid}.pdf"
+        pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Helvetica","B",15)
-        pdf.cell(0,10,"NeuroVision Clinical Emotion Report",0,1,"C")
-        pdf.set_font("Helvetica","",12)
-        pdf.multi_cell(180,8,report)
+        pdf.set_font("Helvetica", "B", 15)
+        pdf.cell(0, 10, "NeuroVision Report", 0, 1, "C")
+        pdf.set_font("Helvetica", "", 12)
+        pdf.multi_cell(180, 8, report)
         pdf.output(pdf_path)
 
-        with open(pdf_path,"rb") as f:
-            st.download_button("📄 Download PDF Report",data=f,file_name=os.path.basename(pdf_path),mime="application/pdf")
+        with open(pdf_path, "rb") as f:
+            st.download_button("📄 Download Report",
+                               data=f,
+                               file_name=os.path.basename(pdf_path),
+                               mime="application/pdf")
