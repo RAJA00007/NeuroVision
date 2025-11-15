@@ -1,5 +1,5 @@
 <div align="center">
-<img src=banner.png.png>
+<img src=banner.png>
 <h2>NeuroVision — AI Health Companion</h2>
 <p>Multimodal AI for Emotion Analysis • Medical Imaging • Clinical Summaries</p>
 <!-- Badges -->
