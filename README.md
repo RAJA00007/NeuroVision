@@ -10,86 +10,54 @@
 </div>
 
 
-Overview
 
-NeuroVision is an offline multimodal AI system that integrates emotion recognition, medical image analysis, and clinical report summarization into a unified health-analysis dashboard.
-It demonstrates how computer vision, affective computing, and transformer-based NLP can work together to provide rapid, interpretable insights while maintaining full data privacy.
+## Overview
+NeuroVision is an offline multimodal AI system that integrates **emotion recognition**, **medical image analysis**, and **clinical report summarization** into a unified health-analysis dashboard.  
+It demonstrates how computer vision, affective computing, and transformer-based NLP can work together to provide fast, interpretable health insights—while keeping all data completely local and private.
 
-Key Features
+---
 
-Real-time facial emotion recognition
+## Key Features
+- **Real-time emotion detection** from facial expressions  
+- **X-ray / MRI / CT analysis** using pretrained Vision Transformer & CNN models  
+- **Medical report summarization** using transformer-based NLP  
+- **Automated PDF generation** containing all results  
+- **Streamlit-powered dashboard** with a clean, unified workflow  
+- **100% offline processing** (no API keys, no cloud calls)
 
-X-ray/MRI/CT image classification using pretrained deep-learning models
+---
 
-Summarization of medical reports using transformer architectures
+## System Modules
 
-Automatic PDF generation containing all results
+### 1. Emotion Analysis  
+Uses facial-expression recognition to predict emotional states in real time.
 
-Unified Streamlit dashboard for seamless interaction
+### 2. Medical Imaging  
+Classifies radiology images and detects anomalies using deep-learning architectures such as Vision Transformers and ResNet.
 
-Fully offline execution with no API calls or cloud dependency
+### 3. Clinical Summarization  
+Summarizes long, unstructured medical reports into concise, easy-to-read text.
 
-System Modules
+### 4. Reporting Module  
+Generates downloadable PDF health summaries containing:
+- Emotion analysis  
+- Image classification results  
+- Summarized clinical findings  
 
-Emotion Analysis
-Uses facial-expression recognition models to predict the user’s emotional state in real time.
+---
 
-Medical Imaging
-Processes uploaded radiology images to classify potential abnormalities using Vision Transformers or CNN-based architectures.
+## Technology Stack
+- **Python 3.10+**  
+- **Streamlit**  
+- **DeepFace**, **OpenCV**  
+- **Vision Transformers (ViT)**, **ResNet**  
+- **HuggingFace Transformers** (BART / T5)  
+- **FPDF** (PDF generation)
 
-Clinical Summarization
-Converts long, unstructured medical reports into concise summaries for easier interpretation.
+---
 
-Reporting Module
-Generates downloadable PDF health summaries combining outputs from all modules.
+## Installation
 
-Technology Stack
-
-Python (3.10+)
-
-Streamlit
-
-DeepFace, OpenCV
-
-Vision Transformers / ResNet
-
-HuggingFace Transformers (BART/T5)
-
-FPDF
-
-Installation
+```bash
 pip install -r requirements.txt
 streamlit run app.py
-
-Folder Structure
-NeuroVision/
-│── app.py
-│── requirements.txt
-│── assets/
-│── data/
-│── reports/
-│── utils/
-└── README.md
-
-Privacy & Ethics
-
-All computation takes place locally.
-No user data is uploaded, logged, or transmitted.
-This project is intended purely for academic, research, and demonstration purposes — not for clinical use.
-
-Roadmap
-
-Explainable AI (attention maps, Grad-CAM)
-
-Support for additional imaging modalities
-
-Optimized models for mobile devices
-
-On-device small-LLM integration
-
-UI workflow enhancements
-
-Author
-
-Raja Kumar Raut
-GitHub: https://github.com/RAJA00007
