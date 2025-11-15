@@ -56,8 +56,31 @@ Generates downloadable PDF health summaries containing:
 
 ---
 
+## Privacy & Ethics
+
+- **All processing occurs locally on the user's device**
+- **No data is uploaded, stored, or transmitted**
+- **Intended solely for academic, research, and demonstration purposes**
+- **Not a replacement for clinical diagnosis**
+
+## Roadmap
+
+- **Explainability tools (attention maps, Grad-CAM)**
+- **Support for multiple medical imaging modalities**
+- **Mobile-optimized inference**
+- **On-device small-LLM integration**
+- **Dashboard UX and workflow improvements**
+
+## Author
+
+- **Raja Kumar Raut**
+- **GitHub: https://github.com/RAJA00007**
+
 ## Installation
 
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
+
+
+
