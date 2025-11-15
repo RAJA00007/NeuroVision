@@ -9,6 +9,13 @@ from datetime import datetime
 from statistics import mode
 from fpdf import FPDF
 
+
+# --- Safe CV2 import for Streamlit Cloud ---
+try:
+    import cv2
+except Exception:
+    cv2 = None
+    
 # ---------- SAFE FOLDERS ----------
 for path in ["data", "data/session_logs", "reports"]:
     os.makedirs(path, exist_ok=True)
